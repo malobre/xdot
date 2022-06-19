@@ -67,6 +67,10 @@ fn main() -> Result<()> {
 
     let args = Args::from_env()?;
 
+    if args.packages.is_empty() {
+        bail!("No packages specified");
+    }
+
     for package_name in &args.packages {
         let package_path =
             PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package_name)]);
