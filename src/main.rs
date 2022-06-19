@@ -25,6 +25,10 @@ impl Args {
 
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Long("version") => {
+                    println!("xdot {}", env!("CARGO_PKG_VERSION"));
+                    std::process::exit(0);
+                }
                 Arg::Value(package) => {
                     packages.push(package.into_boxed_os_str());
                 }
