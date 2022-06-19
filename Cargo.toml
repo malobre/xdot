@@ -1,0 +1,13 @@
+[package]
+name = "xdot"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+
+[dependencies]
+anyhow = "1.0.58"
