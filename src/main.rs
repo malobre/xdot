@@ -15,21 +15,27 @@ compile_error!("`xdot` only supports Unix.");
 
 struct Args {
     packages: Vec<Box<OsStr>>,
+    verbosity: u8,
 }
 
 impl Args {
     fn from_env() -> Result<Self> {
         let mut packages = Vec::new();
+        let mut verbosity = 0;
 
         let mut parser = lexopt::Parser::from_env();
 
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Long("verbose") | Arg::Short('v') => {
+                    verbosity += 1;
+                }
                 Arg::Long("help") | Arg::Short('h') => {
                     println!(concat!(
                         "Usage: xdot [options] [package...]\n",
                         "Symlink your dotfiles from `~/.xdot`.\n\n",
                         "Options:\n",
+                        "  -v, --verbose\tIncrease verbosity.\n",
                         "  -h, --help\tShow this help message and exit.\n",
                         "  --version\tShow version information and exit.\n",
                     ));
@@ -46,7 +52,10 @@ impl Args {
             }
         }
 
-        Ok(Self { packages })
+        Ok(Self {
+            packages,
+            verbosity,
+        })
     }
 }
 
@@ -96,28 +105,38 @@ fn main() -> Result<()> {
                 PathBuf::from_iter([Path::new("/"), original.path().strip_prefix(&package_path)?])
             };
 
-            symlink_or_descend(&original.path(), &link)?;
+            symlink_or_descend(&original.path(), &link, &args)?;
         }
     }
 
     Ok(())
 }
 
-fn symlink_or_descend(original: &Path, link: &Path) -> Result<()> {
+fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
     match (link.metadata(), original.metadata()) {
-        (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => Ok(()),
+        (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => {
+            if args.verbosity > 0 {
+                println!("Skipping preexisting symlink: {}", link.display());
+            }
+
+            Ok(())
+        }
         (Ok(link_metadata), _) => {
             if link_metadata.is_file() {
                 bail!("{} already exists", link.display());
             }
 
+            if args.verbosity > 0 {
+                println!("Descending into preexisting directory: {}", link.display());
+            }
+
             for entry in original
                 .read_dir()
-                .with_context(|| format!("Unable to descend into `{}`", original.display()))?
+                .with_context(|| format!("Unable to descend into {}", original.display()))?
             {
                 let entry = entry?;
 
-                symlink_or_descend(&entry.path(), &link.join(entry.file_name()))?;
+                symlink_or_descend(&entry.path(), &link.join(entry.file_name()), args)?;
             }
 
             Ok(())
