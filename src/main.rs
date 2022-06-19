@@ -25,6 +25,16 @@ impl Args {
 
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Long("help") | Arg::Short('h') => {
+                    println!(concat!(
+                        "Usage: xdot [options] [package...]\n",
+                        "Symlink your dotfiles from `~/.xdot`.\n\n",
+                        "Options:\n",
+                        "  -h, --help\tShow this help message and exit.\n",
+                        "  --version\tShow version information and exit.\n",
+                    ));
+                    std::process::exit(0);
+                }
                 Arg::Long("version") => {
                     println!("xdot {}", env!("CARGO_PKG_VERSION"));
                     std::process::exit(0);
