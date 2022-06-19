@@ -8,9 +8,33 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
+use lexopt::Arg;
 
 #[cfg(not(target_family = "unix"))]
 compile_error!("`xdot` only supports Unix.");
+
+struct Args {
+    packages: Vec<Box<OsStr>>,
+}
+
+impl Args {
+    fn from_env() -> Result<Self> {
+        let mut packages = Vec::new();
+
+        let mut parser = lexopt::Parser::from_env();
+
+        while let Some(arg) = parser.next()? {
+            match arg {
+                Arg::Value(package) => {
+                    packages.push(package.into_boxed_os_str());
+                }
+                _ => bail!(arg.unexpected()),
+            }
+        }
+
+        Ok(Self { packages })
+    }
+}
 
 fn main() -> Result<()> {
     let home = match std::env::var_os("HOME") {
@@ -18,7 +42,9 @@ fn main() -> Result<()> {
         None => bail!("$HOME is not set"),
     };
 
-    for package_name in std::env::args_os().skip(1) {
+    let args = Args::from_env()?;
+
+    for package_name in &args.packages {
         let package_path =
             PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package_name)]);
 

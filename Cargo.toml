@@ -11,3 +11,4 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.58"
+lexopt = "0.2.0"
