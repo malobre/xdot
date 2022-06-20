@@ -23,7 +23,7 @@ struct Args {
 impl Args {
     fn from_env() -> Result<Self> {
         let mut packages = Vec::new();
-        let mut verbosity = 0;
+        let mut verbosity = 0_u8;
         let mut unlink = false;
         let mut dry_run = false;
 
@@ -34,7 +34,7 @@ impl Args {
                 Arg::Long("dry-run") => dry_run = true,
                 Arg::Long("unlink") => unlink = true,
                 Arg::Long("verbose") | Arg::Short('v') => {
-                    verbosity += 1;
+                    verbosity = verbosity.saturating_add(1);
                 }
                 Arg::Long("help") | Arg::Short('h') => {
                     println!(concat!(
