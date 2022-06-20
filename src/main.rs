@@ -81,6 +81,10 @@ fn main() -> Result<()> {
         bail!("No packages specified");
     }
 
+    if args.dry_run {
+        println!("Dry run mode, no changes will be made.");
+    }
+
     for package in &args.packages {
         let package_path = PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package)]);
 
@@ -152,13 +156,11 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
     match (link.metadata(), original.metadata()) {
         (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => {
             if args.unlink {
-                if args.dry_run {
-                    println!("[DRY RUN] Removing symlink: {}", link.display());
-                    return Ok(());
-                }
-
                 println!("Removing symlink: {}", link.display());
-                std::fs::remove_file(link).context("Unable to remove symlink")?;
+
+                if !args.dry_run {
+                    std::fs::remove_file(link).context("Unable to remove symlink")?;
+                }
             } else if args.verbosity > 0 {
                 println!("Skipping preexisting symlink: {}", link.display());
             }
@@ -187,11 +189,9 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
         }
         _ => {
             if !args.unlink {
-                if args.dry_run {
-                    println!("[DRY RUN] {} => {}", link.display(), original.display());
-                } else {
-                    println!("{} => {}", link.display(), original.display());
+                println!("{} => {}", link.display(), original.display());
 
+                if !args.dry_run {
                     symlink(&original, &link).with_context(|| {
                         format!(
                             "Unable to symlink {} => {}",
