@@ -81,14 +81,13 @@ fn main() -> Result<()> {
         bail!("No packages specified");
     }
 
-    for package_name in &args.packages {
-        let package_path =
-            PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package_name)]);
+    for package in &args.packages {
+        let package_path = PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package)]);
 
         println!(
             "{} config for `{}` ({})",
             if args.unlink { "Unlinking" } else { "Linking" },
-            package_name.to_string_lossy(),
+            package.to_string_lossy(),
             package_path.display()
         );
 
@@ -97,12 +96,8 @@ fn main() -> Result<()> {
             .context("Unable to read package content")?
         {
             let original = original?;
-            let original_file_name = original.file_name();
-            let original_file_name = original_file_name.as_bytes();
 
-            let link = if original_file_name[0] == b'@' {
-                let env_var_name = OsStr::from_bytes(&original_file_name[1..]);
-
+            let link = if let Some(env_var_name) = strip_at_sign_prefix(&original.file_name()) {
                 match (std::env::var_os(env_var_name), env_var_name.to_str()) {
                     (Some(value), _) => PathBuf::from(value),
                     (None, Some("XDG_DATA_HOME")) => home.join(".local/share"),
@@ -125,6 +120,16 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn strip_at_sign_prefix(file_name: &OsStr) -> Option<&OsStr> {
+    let file_name = file_name.as_bytes();
+
+    if file_name[0] == b'@' {
+        Some(OsStr::from_bytes(&file_name[1..]))
+    } else {
+        None
+    }
 }
 
 fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
