@@ -41,11 +41,11 @@ impl Args {
                         "Usage: xdot [options] [package...]\n",
                         "Symlink your dotfiles from `~/.xdot`.\n\n",
                         "Options:\n",
-                        "  --unlink\tRemove symlinks.\n",
-                        "  --dry-run\tDon't modify the file system.\n",
-                        "  -v, --verbose\tIncrease verbosity.\n",
-                        "  -h, --help\tShow this help message and exit.\n",
-                        "  --version\tShow version information and exit.\n",
+                        "  --unlink       Remove symlinks.\n",
+                        "  --dry-run      Don't modify the file system.\n",
+                        "  -v, --verbose  Increase verbosity.\n",
+                        "  -h, --help     Show this help message and exit.\n",
+                        "  --version      Show version information and exit.\n",
                     ));
                     std::process::exit(0);
                 }
