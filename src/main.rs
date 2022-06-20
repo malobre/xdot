@@ -45,7 +45,7 @@ impl Args {
                         "  --dry-run      Don't modify the file system.\n",
                         "  -v, --verbose  Increase verbosity.\n",
                         "  -h, --help     Show this help message and exit.\n",
-                        "  --version      Show version information and exit.\n",
+                        "  --version      Show version information and exit.",
                     ));
                     std::process::exit(0);
                 }
