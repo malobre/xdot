@@ -97,8 +97,8 @@ fn main() -> Result<()> {
         {
             let original = original?;
 
-            let link = if let Some(env_var_name) = strip_at_sign_prefix(&original.file_name()) {
-                match (std::env::var_os(env_var_name), env_var_name.to_str()) {
+            if let Some(env_var_name) = strip_at_sign_prefix(&original.file_name()) {
+                let link = match (std::env::var_os(env_var_name), env_var_name.to_str()) {
                     (Some(value), _) => PathBuf::from(value),
                     (None, Some("XDG_DATA_HOME")) => home.join(".local/share"),
                     (None, Some("XDG_CONFIG_HOME")) => home.join(".config"),
@@ -110,12 +110,28 @@ fn main() -> Result<()> {
                             env_var_name.to_string_lossy()
                         )
                     }
+                };
+
+                let original = original.path();
+
+                for entry in original
+                    .read_dir()
+                    .with_context(|| format!("Unable to descend into {}", original.display()))?
+                {
+                    let entry = entry?;
+
+                    symlink_or_descend(&entry.path(), &link.join(entry.file_name()), &args)?;
                 }
             } else {
-                PathBuf::from_iter([Path::new("/"), original.path().strip_prefix(&package_path)?])
-            };
-
-            symlink_or_descend(&original.path(), &link, &args)?;
+                symlink_or_descend(
+                    &original.path(),
+                    &PathBuf::from_iter([
+                        Path::new("/"),
+                        original.path().strip_prefix(&package_path)?,
+                    ]),
+                    &args,
+                )?;
+            }
         }
     }
 
