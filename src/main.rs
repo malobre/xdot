@@ -38,7 +38,7 @@ impl Args {
                 }
                 Arg::Long("help") | Arg::Short('h') => {
                     println!(concat!(
-                        "Usage: xdot [options] [package...]\n",
+                        "Usage: xdot [options] [--] package...\n",
                         "Symlink your dotfiles from `~/.xdot`.\n\n",
                         "Options:\n",
                         "  --unlink       Remove symlinks.\n",
