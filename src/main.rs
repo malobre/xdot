@@ -126,16 +126,7 @@ fn main() -> Result<()> {
                     ),
                 };
 
-                let original = original.path();
-
-                for entry in original
-                    .read_dir()
-                    .with_context(|| format!("Unable to descend into {}", original.display()))?
-                {
-                    let entry = entry?;
-
-                    symlink_or_descend(&entry.path(), &link.join(entry.file_name()), &args)?;
-                }
+                descend_and_symlink(&original.path(), link, &args)?;
             } else {
                 symlink_or_descend(
                     &original.path(),
@@ -162,6 +153,19 @@ fn strip_at_sign_prefix(file_name: &OsStr) -> Option<&OsStr> {
     }
 }
 
+fn descend_and_symlink(original: &Path, link: &Path, args: &Args) -> Result<()> {
+    for entry in original
+        .read_dir()
+        .with_context(|| format!("Unable to descend into {}", original.display()))?
+    {
+        let entry = entry?;
+
+        symlink_or_descend(&entry.path(), &link.join(entry.file_name()), args)?;
+    }
+
+    Ok(())
+}
+
 fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
     match (link.metadata(), original.metadata()) {
         (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => {
@@ -186,14 +190,7 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
                 println!("Descending into preexisting directory: {}", link.display());
             }
 
-            for entry in original
-                .read_dir()
-                .with_context(|| format!("Unable to descend into {}", original.display()))?
-            {
-                let entry = entry?;
-
-                symlink_or_descend(&entry.path(), &link.join(entry.file_name()), args)?;
-            }
+            descend_and_symlink(original, link, args)?;
 
             Ok(())
         }
