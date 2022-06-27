@@ -1,3 +1,6 @@
+#[cfg(not(target_family = "unix"))]
+compile_error!("`xdot` only supports Unix.");
+
 use std::{
     ffi::OsStr,
     os::unix::{
@@ -8,9 +11,6 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-
-#[cfg(not(target_family = "unix"))]
-compile_error!("`xdot` only supports Unix.");
 
 struct Args {
     packages: Vec<Box<OsStr>>,
