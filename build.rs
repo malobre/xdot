@@ -1,3 +1,5 @@
+use std::process::Output;
+
 use anyhow::Result;
 
 fn main() -> Result<()> {
@@ -9,22 +11,17 @@ fn main() -> Result<()> {
         .args(&["rev-parse", "HEAD"])
         .output()
     {
-        Ok(output) if output.status.success() => {
-            let active_head_hash = String::from_utf8(output.stdout)?;
-
-            println!("cargo:rustc-env=GIT_HEAD_HASH={}", active_head_hash);
-        }
-        Ok(output) => {
+        Ok(Output { status, stdout, .. }) if status.success() => {
             println!(
-                "cargo:warning={}",
-                format_args!("Unable to retrieve HEAD hash: {}", output.status)
+                "cargo:rustc-env=GIT_HEAD_HASH={}",
+                String::from_utf8(stdout)?
             );
+        }
+        Ok(Output { status, .. }) => {
+            println!("cargo:warning=Unable to read HEAD symbolic ref: {status}");
         }
         Err(error) => {
-            println!(
-                "cargo:warning={}",
-                format_args!("Unable to execute git command: {}", error)
-            );
+            println!("cargo:warning=Unable to execute git command: {error}");
         }
     }
 
