@@ -4,8 +4,8 @@ compile_error!("`xdot` only supports Unix.");
 use std::{
     ffi::OsStr,
     os::unix::{
-        fs::symlink,
-        prelude::{MetadataExt, OsStrExt},
+        ffi::OsStrExt,
+        fs::{symlink, MetadataExt},
     },
     path::{Path, PathBuf},
 };
