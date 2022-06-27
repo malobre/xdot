@@ -1,4 +1,6 @@
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+use anyhow::Result;
+
+fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-changed=.git/refs");
     println!("cargo:rerun-if-changed=.git/packed-refs");
