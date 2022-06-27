@@ -8,7 +8,7 @@ fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=.git/packed-refs");
 
     match std::process::Command::new("git")
-        .args(&["rev-parse", "HEAD"])
+        .args(&["rev-parse", "--verify", "HEAD"])
         .output()
     {
         Ok(Output { status, stdout, .. }) if status.success() => {
