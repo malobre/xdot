@@ -90,6 +90,11 @@ fn main() -> Result<()> {
         println!("Dry run mode, no changes will be made.");
     }
 
+    let default_xdg_data_home = home.join(".local/share").into_boxed_path();
+    let default_xdg_state_home = home.join(".local/state").into_boxed_path();
+    let default_xdg_cache_home = home.join(".cache").into_boxed_path();
+    let default_xdg_config_home = home.join(".config").into_boxed_path();
+
     for package in &args.packages {
         let package_path = PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package)]);
 
@@ -107,18 +112,18 @@ fn main() -> Result<()> {
             let original = original?;
 
             if let Some(env_var_name) = strip_at_sign_prefix(&original.file_name()) {
-                let link = match (std::env::var_os(env_var_name), env_var_name.to_str()) {
-                    (Some(value), _) => PathBuf::from(value),
-                    (None, Some("XDG_DATA_HOME")) => home.join(".local/share"),
-                    (None, Some("XDG_CONFIG_HOME")) => home.join(".config"),
-                    (None, Some("XDG_STATE_HOME")) => home.join(".local/state"),
-                    (None, Some("XDG_CACHE_HOME")) => home.join(".cache"),
-                    (None, _) => {
-                        bail!(
-                            "Unable to find environment variable `{}`",
-                            env_var_name.to_string_lossy()
-                        )
-                    }
+                let link = std::env::var_os(env_var_name).map(PathBuf::from);
+
+                let link = match (link.as_deref(), env_var_name.to_str()) {
+                    (Some(value), _) => value,
+                    (None, Some("XDG_DATA_HOME")) => &*default_xdg_data_home,
+                    (None, Some("XDG_STATE_HOME")) => &*default_xdg_state_home,
+                    (None, Some("XDG_CACHE_HOME")) => &*default_xdg_cache_home,
+                    (None, Some("XDG_CONFIG_HOME")) => &*default_xdg_config_home,
+                    (None, _) => bail!(
+                        "Unable to find environment variable `{}`",
+                        env_var_name.to_string_lossy()
+                    ),
                 };
 
                 let original = original.path();
