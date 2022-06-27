@@ -51,6 +51,11 @@ impl Args {
                 }
                 Arg::Long("version") => {
                     println!("xdot {}", env!("CARGO_PKG_VERSION"));
+
+                    if let Some(hash) = option_env!("GIT_HEAD_HASH") {
+                        println!("{hash}");
+                    }
+
                     std::process::exit(0);
                 }
                 Arg::Value(package) => {
