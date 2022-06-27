@@ -8,7 +8,6 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use lexopt::Arg;
 
 #[cfg(not(target_family = "unix"))]
 compile_error!("`xdot` only supports Unix.");
@@ -30,6 +29,8 @@ impl Args {
         let mut parser = lexopt::Parser::from_env();
 
         while let Some(arg) = parser.next()? {
+            use lexopt::Arg;
+
             match arg {
                 Arg::Long("dry-run") => dry_run = true,
                 Arg::Long("unlink") => unlink = true,
