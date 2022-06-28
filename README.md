@@ -9,7 +9,7 @@ computers, this won't work. `xdot` is my answer to that.
 ## Usage
 
 ```
-Usage: xdot [options] [package...]
+Usage: xdot [options] [--] package...
 Symlink your dotfiles from `~/.xdot`.
 
 Options:
