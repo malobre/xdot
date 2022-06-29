@@ -56,6 +56,7 @@ impl Args {
                         "  -h, --help     Show this help message and exit.",
                         "  --version      Show version information and exit.",
                     ));
+
                     std::process::exit(0);
                 }
                 Arg::Long("version") => {
