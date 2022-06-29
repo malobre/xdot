@@ -17,6 +17,7 @@ struct Args {
     packages: Vec<Box<OsStr>>,
     verbosity: u8,
     unlink: bool,
+    dry_run: bool,
 }
 
 impl Args {
@@ -24,11 +25,13 @@ impl Args {
         let mut packages = Vec::new();
         let mut verbosity = 0;
         let mut unlink = false;
+        let mut dry_run = false;
 
         let mut parser = lexopt::Parser::from_env();
 
         while let Some(arg) = parser.next()? {
             match arg {
+                Arg::Long("dry-run") => dry_run = true,
                 Arg::Long("unlink") => unlink = true,
                 Arg::Long("verbose") | Arg::Short('v') => {
                     verbosity += 1;
@@ -39,6 +42,7 @@ impl Args {
                         "Symlink your dotfiles from `~/.xdot`.\n\n",
                         "Options:\n",
                         "  --unlink\tRemove symlinks.\n",
+                        "  --dry-run\tDon't modify the file system.\n",
                         "  -v, --verbose\tIncrease verbosity.\n",
                         "  -h, --help\tShow this help message and exit.\n",
                         "  --version\tShow version information and exit.\n",
@@ -60,6 +64,7 @@ impl Args {
             packages,
             verbosity,
             unlink,
+            dry_run,
         })
     }
 }
@@ -126,6 +131,11 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
     match (link.metadata(), original.metadata()) {
         (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => {
             if args.unlink {
+                if args.dry_run {
+                    println!("[DRY RUN] Removing symlink: {}", link.display());
+                    return Ok(());
+                }
+
                 println!("Removing symlink: {}", link.display());
                 std::fs::remove_file(link).context("Unable to remove symlink")?;
             } else if args.verbosity > 0 {
@@ -156,15 +166,19 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
         }
         _ => {
             if !args.unlink {
-                println!("{} => {}", link.display(), original.display());
+                if args.dry_run {
+                    println!("[DRY RUN] {} => {}", link.display(), original.display());
+                } else {
+                    println!("{} => {}", link.display(), original.display());
 
-                symlink(&original, &link).with_context(|| {
-                    format!(
-                        "Unable to symlink {} => {}",
-                        link.display(),
-                        original.display()
-                    )
-                })?;
+                    symlink(&original, &link).with_context(|| {
+                        format!(
+                            "Unable to symlink {} => {}",
+                            link.display(),
+                            original.display()
+                        )
+                    })?;
+                }
             } else if args.verbosity > 0 {
                 println!("Skipping non-existent file: {}", link.display());
             }
