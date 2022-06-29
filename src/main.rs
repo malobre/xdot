@@ -12,6 +12,13 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 
+/// Flattens literals into a single static string slice, placing a newline between each element.
+macro_rules! joinln {
+    ($head:expr, $($e:expr),* $(,)?) => {
+        concat!($head, $('\n', $e, )*)
+    };
+}
+
 struct Args {
     packages: Vec<Box<OsStr>>,
     verbosity: u8,
@@ -38,14 +45,15 @@ impl Args {
                     verbosity = verbosity.saturating_add(1);
                 }
                 Arg::Long("help") | Arg::Short('h') => {
-                    println!(concat!(
-                        "Usage: xdot [options] [--] package...\n",
-                        "Symlink your dotfiles from `~/.xdot`.\n\n",
-                        "Options:\n",
-                        "  --unlink       Remove symlinks.\n",
-                        "  --dry-run      Don't modify the file system.\n",
-                        "  -v, --verbose  Increase verbosity.\n",
-                        "  -h, --help     Show this help message and exit.\n",
+                    println!(joinln!(
+                        "Usage: xdot [options] [--] package...",
+                        "Symlink your dotfiles from `~/.xdot`.",
+                        "",
+                        "Options:",
+                        "  --unlink       Remove symlinks.",
+                        "  --dry-run      Don't modify the file system.",
+                        "  -v, --verbose  Increase verbosity.",
+                        "  -h, --help     Show this help message and exit.",
                         "  --version      Show version information and exit.",
                     ));
                     std::process::exit(0);
