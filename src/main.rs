@@ -10,7 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 
 /// Flattens literals into a single static string slice, placing a newline between each element.
 macro_rules! joinln {
@@ -126,17 +126,21 @@ fn main() -> Result<()> {
             if let Some(env_var_name) = strip_at_sign_prefix(&original.file_name()) {
                 let link = std::env::var_os(env_var_name).map(PathBuf::from);
 
-                let link = match (link.as_deref(), env_var_name.to_str()) {
-                    (Some(value), _) => value,
-                    (None, Some("XDG_DATA_HOME")) => &*default_xdg_data_home,
-                    (None, Some("XDG_STATE_HOME")) => &*default_xdg_state_home,
-                    (None, Some("XDG_CACHE_HOME")) => &*default_xdg_cache_home,
-                    (None, Some("XDG_CONFIG_HOME")) => &*default_xdg_config_home,
-                    (None, _) => bail!(
-                        "Unable to find environment variable `{}`",
-                        env_var_name.to_string_lossy()
-                    ),
-                };
+                let link = link
+                    .as_deref()
+                    .or_else(|| match env_var_name.to_str() {
+                        Some("XDG_DATA_HOME") => Some(&*default_xdg_data_home),
+                        Some("XDG_STATE_HOME") => Some(&*default_xdg_state_home),
+                        Some("XDG_CACHE_HOME") => Some(&*default_xdg_cache_home),
+                        Some("XDG_CONFIG_HOME") => Some(&*default_xdg_config_home),
+                        _ => None,
+                    })
+                    .ok_or_else(|| {
+                        anyhow!(
+                            "Unable to find environment variable `{}`",
+                            env_var_name.to_string_lossy()
+                        )
+                    })?;
 
                 descend_and_symlink(&original.path(), link, &args)?;
             } else {
