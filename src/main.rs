@@ -159,6 +159,12 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Returns a substring with the `U+0040 AT SIGN (@)` prefix removed.
+///
+/// If the string starts with a `U+0040 AT SIGN (@)`, returns substring after the prefix, wrapped
+/// in `Some`. The prefix is removed exactly once.
+///
+/// If the string does not start with a `U+0040 AT SIGN (@)`, returns `None`.
 fn strip_at_sign_prefix(file_name: &OsStr) -> Option<&OsStr> {
     let file_name = file_name.as_bytes();
 
@@ -169,6 +175,7 @@ fn strip_at_sign_prefix(file_name: &OsStr) -> Option<&OsStr> {
     }
 }
 
+/// Symlink the children of `original` to the children of `link`.
 fn descend_and_symlink(original: &Path, link: &Path, args: &Args) -> Result<()> {
     for entry in original
         .read_dir()
@@ -182,6 +189,7 @@ fn descend_and_symlink(original: &Path, link: &Path, args: &Args) -> Result<()> 
     Ok(())
 }
 
+/// Symlink `original` to `link`, or, if `original` already exists and is a directory, calls [`descend_and_symlink`].
 fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
     match (link.metadata(), original.metadata()) {
         (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => {
