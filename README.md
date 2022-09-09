@@ -32,6 +32,7 @@ Symlink your dotfiles from `~/.xdot`.
 
 Options:
   --unlink       Remove symlinks.
+  --dry-run      Don't modify the file system.
   -v, --verbose  Increase verbosity.
   -h, --help     Show this help message and exit.
   --version      Show version information and exit.
