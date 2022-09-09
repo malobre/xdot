@@ -16,7 +16,7 @@ checksum = "478ee9e62aaeaf5b140bd4138753d1f109765488581444218d3ddda43234f3e8"
 
 [[package]]
 name = "xdot"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "lexopt",
