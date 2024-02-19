@@ -11,6 +11,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
+use ignore::WalkBuilder;
 
 /// Flattens literals into a single static string slice, placing a newline between each element.
 macro_rules! joinln {
@@ -19,11 +20,21 @@ macro_rules! joinln {
     };
 }
 
-struct Args {
-    packages: Vec<Box<OsStr>>,
+enum PackageSpec {
+    None,
+    All,
+    List(Vec<Box<OsStr>>),
+}
+
+struct Options {
     verbosity: u8,
     unlink: bool,
     dry_run: bool,
+}
+
+struct Args {
+    package_spec: PackageSpec,
+    options: Options,
 }
 
 // Better to be explicit
@@ -31,10 +42,12 @@ struct Args {
 impl Default for Args {
     fn default() -> Self {
         Self {
-            packages: Vec::new(),
-            verbosity: 0,
-            unlink: false,
-            dry_run: false,
+            package_spec: PackageSpec::None,
+            options: Options {
+                verbosity: 0,
+                unlink: false,
+                dry_run: false,
+            },
         }
     }
 }
@@ -49,17 +62,18 @@ impl Args {
             use lexopt::Arg;
 
             match arg {
-                Arg::Long("dry-run") => args.dry_run = true,
-                Arg::Long("unlink") => args.unlink = true,
+                Arg::Long("dry-run") => args.options.dry_run = true,
+                Arg::Long("unlink") => args.options.unlink = true,
                 Arg::Long("verbose") | Arg::Short('v') => {
-                    args.verbosity = args.verbosity.saturating_add(1);
+                    args.options.verbosity = args.options.verbosity.saturating_add(1);
                 }
                 Arg::Long("help") | Arg::Short('h') => {
                     println!(joinln!(
-                        "Usage: xdot [options] [--] package...",
+                        "Usage: xdot [options] [--] [package...]",
                         "Symlink your dotfiles from `~/.xdot`.",
                         "",
                         "Options:",
+                        "  --all          Symlink all packages.",
                         "  --unlink       Remove symlinks.",
                         "  --dry-run      Don't modify the file system.",
                         "  -v, --verbose  Increase verbosity.",
@@ -80,8 +94,21 @@ impl Args {
 
                     std::process::exit(0);
                 }
-                Arg::Value(package) => {
-                    args.packages.push(package.into_boxed_os_str());
+                Arg::Value(package) => match args.package_spec {
+                    PackageSpec::All => {
+                        bail!("Cannot specify packages after `--all`");
+                    }
+                    PackageSpec::None => {
+                        args.package_spec = PackageSpec::List(vec![package.into_boxed_os_str()]);
+                    }
+                    PackageSpec::List(ref mut list) => list.push(package.into_boxed_os_str()),
+                },
+                Arg::Long("all") => {
+                    if let PackageSpec::List(_) = args.package_spec {
+                        bail!("Cannot specify `--all` after explicit packages");
+                    }
+
+                    args.package_spec = PackageSpec::All;
                 }
                 _ => bail!(arg.unexpected()),
             }
@@ -97,13 +124,16 @@ fn main() -> Result<()> {
         None => bail!("$HOME is not set"),
     };
 
-    let args = Args::from_env()?;
+    let Args {
+        package_spec,
+        options,
+    } = Args::from_env()?;
 
-    if args.packages.is_empty() {
+    if matches!(package_spec, PackageSpec::None) {
         bail!("No packages specified");
     }
 
-    if args.dry_run {
+    if options.dry_run {
         println!("Dry run mode, no changes will be made.");
     }
 
@@ -112,13 +142,43 @@ fn main() -> Result<()> {
     let default_xdg_cache_home = home.join(".cache").into_boxed_path();
     let default_xdg_config_home = home.join(".config").into_boxed_path();
 
-    for package in &args.packages {
+    let packages_root = PathBuf::from_iter([&home, Path::new(".xdot")]).into_boxed_path();
+
+    let packages = match package_spec {
+        PackageSpec::None => unreachable!(),
+        PackageSpec::All => WalkBuilder::new(&packages_root)
+            .require_git(true)
+            .hidden(true)
+            .parents(true)
+            .ignore(true)
+            .git_global(true)
+            .git_ignore(true)
+            .git_exclude(true)
+            .max_depth(Some(1))
+            .follow_links(false)
+            .filter_entry(
+                |entry| matches!(entry.file_type(), Some(file_type) if file_type.is_dir()),
+            )
+            .build()
+            .skip(1)
+            .map(|entry| entry.map(|entry| entry.file_name().to_owned().into_boxed_os_str()))
+            .collect::<Result<Vec<_>, _>>()
+            .with_context(|| format!("Unable to list packages ({})", packages_root.display()))?
+            .into_boxed_slice(),
+        PackageSpec::List(list) => list.into_boxed_slice(),
+    };
+
+    for package in packages.iter() {
         let package_path =
-            PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package)]).into_boxed_path();
+            PathBuf::from_iter([&packages_root, Path::new(&package)]).into_boxed_path();
 
         println!(
             "{} config for `{}` ({})",
-            if args.unlink { "Unlinking" } else { "Linking" },
+            if options.unlink {
+                "Unlinking"
+            } else {
+                "Linking"
+            },
             package.to_string_lossy(),
             package_path.display()
         );
@@ -148,7 +208,7 @@ fn main() -> Result<()> {
                         )
                     })?;
 
-                descend_and_symlink(&original.path(), link, &args)?;
+                descend_and_symlink(&original.path(), link, &options)?;
             } else {
                 symlink_or_descend(
                     &original.path(),
@@ -156,7 +216,7 @@ fn main() -> Result<()> {
                         Path::new("/"),
                         original.path().strip_prefix(&package_path)?,
                     ]),
-                    &args,
+                    &options,
                 )?;
             }
         }
@@ -182,30 +242,30 @@ fn strip_at_sign_prefix(file_name: &OsStr) -> Option<&OsStr> {
 }
 
 /// Symlink the children of `original` to the children of `link`.
-fn descend_and_symlink(original: &Path, link: &Path, args: &Args) -> Result<()> {
+fn descend_and_symlink(original: &Path, link: &Path, options: &Options) -> Result<()> {
     for entry in original
         .read_dir()
         .with_context(|| format!("Unable to descend into {}", original.display()))?
     {
         let entry = entry?;
 
-        symlink_or_descend(&entry.path(), &link.join(entry.file_name()), args)?;
+        symlink_or_descend(&entry.path(), &link.join(entry.file_name()), options)?;
     }
 
     Ok(())
 }
 
 /// Symlink `original` to `link`, or, if `original` already exists and is a directory, calls [`descend_and_symlink`].
-fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
+fn symlink_or_descend(original: &Path, link: &Path, options: &Options) -> Result<()> {
     match (link.metadata(), original.metadata()) {
         (Ok(a), Ok(b)) if a.ino() == b.ino() && a.dev() == b.dev() => {
-            if args.unlink {
+            if options.unlink {
                 println!("Removing symlink: {}", link.display());
 
-                if !args.dry_run {
+                if !options.dry_run {
                     std::fs::remove_file(link).context("Unable to remove symlink")?;
                 }
-            } else if args.verbosity > 0 {
+            } else if options.verbosity > 0 {
                 println!("Skipping preexisting symlink: {}", link.display());
             }
 
@@ -216,19 +276,19 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
                 bail!("{} already exists", link.display());
             }
 
-            if args.verbosity > 0 {
+            if options.verbosity > 0 {
                 println!("Descending into preexisting directory: {}", link.display());
             }
 
-            descend_and_symlink(original, link, args)?;
+            descend_and_symlink(original, link, options)?;
 
             Ok(())
         }
         _ => {
-            if !args.unlink {
+            if !options.unlink {
                 println!("{} => {}", link.display(), original.display());
 
-                if !args.dry_run {
+                if !options.dry_run {
                     symlink(original, link).with_context(|| {
                         format!(
                             "Unable to symlink {} => {}",
@@ -237,7 +297,7 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
                         )
                     })?;
                 }
-            } else if args.verbosity > 0 {
+            } else if options.verbosity > 0 {
                 println!("Skipping non-existent file: {}", link.display());
             }
 

@@ -27,10 +27,11 @@ Otherwise, xdot will link the content of said package relative to `/`, e.g:
 ## Usage
 
 ```
-Usage: xdot [options] [--] package...
+Usage: xdot [options] [--] [package...]
 Symlink your dotfiles from `~/.xdot`.
 
 Options:
+  --all          Symlink all packages.
   --unlink       Remove symlinks.
   --dry-run      Don't modify the file system.
   -v, --verbose  Increase verbosity.
