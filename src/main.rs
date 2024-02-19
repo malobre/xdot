@@ -223,7 +223,7 @@ fn symlink_or_descend(original: &Path, link: &Path, args: &Args) -> Result<()> {
                 println!("{} => {}", link.display(), original.display());
 
                 if !args.dry_run {
-                    symlink(&original, &link).with_context(|| {
+                    symlink(original, link).with_context(|| {
                         format!(
                             "Unable to symlink {} => {}",
                             link.display(),
