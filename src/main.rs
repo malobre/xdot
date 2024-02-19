@@ -113,7 +113,8 @@ fn main() -> Result<()> {
     let default_xdg_config_home = home.join(".config").into_boxed_path();
 
     for package in &args.packages {
-        let package_path = PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package)]);
+        let package_path =
+            PathBuf::from_iter([&home, Path::new(".xdot"), Path::new(&package)]).into_boxed_path();
 
         println!(
             "{} config for `{}` ({})",
