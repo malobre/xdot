@@ -26,12 +26,22 @@ struct Args {
     dry_run: bool,
 }
 
+// Better to be explicit
+#[allow(clippy::derivable_impls)]
+impl Default for Args {
+    fn default() -> Self {
+        Self {
+            packages: Vec::new(),
+            verbosity: 0,
+            unlink: false,
+            dry_run: false,
+        }
+    }
+}
+
 impl Args {
     fn from_env() -> Result<Self> {
-        let mut packages = Vec::new();
-        let mut verbosity = 0_u8;
-        let mut unlink = false;
-        let mut dry_run = false;
+        let mut args = Self::default();
 
         let mut parser = lexopt::Parser::from_env();
 
@@ -39,10 +49,10 @@ impl Args {
             use lexopt::Arg;
 
             match arg {
-                Arg::Long("dry-run") => dry_run = true,
-                Arg::Long("unlink") => unlink = true,
+                Arg::Long("dry-run") => args.dry_run = true,
+                Arg::Long("unlink") => args.unlink = true,
                 Arg::Long("verbose") | Arg::Short('v') => {
-                    verbosity = verbosity.saturating_add(1);
+                    args.verbosity = args.verbosity.saturating_add(1);
                 }
                 Arg::Long("help") | Arg::Short('h') => {
                     println!(joinln!(
@@ -71,18 +81,13 @@ impl Args {
                     std::process::exit(0);
                 }
                 Arg::Value(package) => {
-                    packages.push(package.into_boxed_os_str());
+                    args.packages.push(package.into_boxed_os_str());
                 }
                 _ => bail!(arg.unexpected()),
             }
         }
 
-        Ok(Self {
-            packages,
-            verbosity,
-            unlink,
-            dry_run,
-        })
+        Ok(args)
     }
 }
 
