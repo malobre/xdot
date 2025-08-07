@@ -70,7 +70,7 @@ impl Args {
                 Arg::Long("help") | Arg::Short('h') => {
                     println!(joinln!(
                         "Usage: xdot [options] [--] [package...]",
-                        "Symlink your dotfiles from `~/.xdot`.",
+                        "Symlink your dotfiles from `$XDG_CONFIG_HOME/xdot`.",
                         "",
                         "Options:",
                         "  --all          Symlink all packages.",
@@ -142,7 +142,12 @@ fn main() -> Result<()> {
     let default_xdg_cache_home = home.join(".cache").into_boxed_path();
     let default_xdg_config_home = home.join(".config").into_boxed_path();
 
-    let packages_root = PathBuf::from_iter([&home, Path::new(".xdot")]).into_boxed_path();
+    let packages_root = match std::env::var_os("XDG_CONFIG_HOME") {
+        Some(path) if !path.is_empty() => PathBuf::from(path),
+        _ => PathBuf::from(&*default_xdg_config_home),
+    }
+    .join("xdot")
+    .into_boxed_path();
 
     let packages = match package_spec {
         PackageSpec::None => unreachable!(),

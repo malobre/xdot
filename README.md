@@ -10,7 +10,8 @@ my answer to that.
 
 A package is a directory that contains config for an application.
 
-`xdot` will look for packages in `~/.xdot`.
+`xdot` will look for packages in `$XDG_CONFIG_HOME/xdot` (defaults to
+`~/.config/xdot`).
 
 If a package subdirectory's name begins with a `U+0040 AT SIGN (@)`, the
 remaining characters will be interpreted as an environment variable name (with
@@ -28,7 +29,7 @@ Otherwise, xdot will link the content of said package relative to `/`, e.g:
 
 ```
 Usage: xdot [options] [--] [package...]
-Symlink your dotfiles from `~/.xdot`.
+Symlink your dotfiles from `$XDG_CONFIG_HOME/xdot` (defaults to `~/.config/xdot`).
 
 Options:
   --all          Symlink all packages.
@@ -43,7 +44,7 @@ Running `xdot` is idempotent and won't overwrite existing files, if a directory
 already exists it will descend into it until it is able to symlink or fails.
 
 `--unlink` will remove symlinks that would otherwise be created (except if the
-existing link points to a location outside of `~/.xdot`).
+existing link points to a location outside of the packages directory).
 
 [1]: http://brandon.invergo.net/news/2012-05-26-using-gnu-stow-to-manage-your-dotfiles.html
 [2]: https://web.archive.org/web/20220617221459/http://brandon.invergo.net/news/2012-05-26-using-gnu-stow-to-manage-your-dotfiles.html
